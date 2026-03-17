@@ -37,6 +37,18 @@ export interface CategoryScore {
 
 export type AppStep = 'import' | 'info' | 'evaluate' | 'summary';
 
+export interface RubricEntry {
+  name: string;
+  file: string;
+}
+
+export interface CodeConfig {
+  label: string;
+  rubrics: RubricEntry[];
+  template?: string;
+  autofill?: Partial<EmployeeInfo>;
+}
+
 export const KPI_CATEGORIES = ['FDR', 'RO', 'SS', 'IRR', 'DCT', 'CDQ', 'TDA', 'TSD', 'TER', 'KSI'];
 export const COMPETENCY_CATEGORIES = ['PD', 'RDM', 'CSF', 'CD', 'LX', 'IO', 'CPS'];
 

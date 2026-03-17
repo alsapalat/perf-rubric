@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { RubricItem, Answer, EmployeeInfo, AppStep } from './types';
+import { useState, useCallback, useEffect } from 'react';
+import { RubricItem, Answer, EmployeeInfo, AppStep, CodeConfig } from './types';
 import { parseRubricCSV } from './csvParser';
 import ImportStep from './components/ImportStep';
 import InfoStep from './components/InfoStep';
@@ -29,6 +29,24 @@ export default function App() {
     evalDiscussionDate: '',
   });
   const [templateFile, setTemplateFile] = useState<File | null>(null);
+  const [codeConfig, setCodeConfig] = useState<CodeConfig | null>(null);
+
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get('code');
+    if (!code) return;
+    fetch(`${import.meta.env.BASE_URL}codes.json`)
+      .then((r) => r.json())
+      .then((registry: Record<string, CodeConfig>) => {
+        const config = registry[code];
+        if (config) {
+          setCodeConfig(config);
+          if (config.autofill) {
+            setEmployeeInfo((prev) => ({ ...prev, ...config.autofill }));
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleImport = useCallback((csvText: string, fileName: string) => {
     const items = parseRubricCSV(csvText);
@@ -98,7 +116,7 @@ export default function App() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6">
-        {step === 'import' && <ImportStep onImport={handleImport} />}
+        {step === 'import' && <ImportStep onImport={handleImport} codeConfig={codeConfig} />}
         {step === 'info' && (
           <InfoStep info={employeeInfo} onSubmit={handleInfoSubmit} onBack={() => setStep('import')} />
         )}
@@ -117,6 +135,7 @@ export default function App() {
             employeeInfo={employeeInfo}
             templateFile={templateFile}
             setTemplateFile={setTemplateFile}
+            templateUrl={codeConfig?.template}
             onBack={() => setStep('evaluate')}
           />
         )}

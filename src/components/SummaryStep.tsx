@@ -31,6 +31,7 @@ interface Props {
   employeeInfo: EmployeeInfo;
   templateFile: File | null;
   setTemplateFile: (f: File | null) => void;
+  templateUrl?: string;
   onBack: () => void;
 }
 
@@ -51,7 +52,7 @@ function getLevelBadge(level: string) {
   return 'bg-red-100 text-red-800 border-red-200';
 }
 
-export default function SummaryStep({ answers, employeeInfo, templateFile, setTemplateFile, onBack }: Props) {
+export default function SummaryStep({ answers, employeeInfo, templateFile, setTemplateFile, templateUrl, onBack }: Props) {
   const results = useMemo(() => computeAll(answers), [answers]);
 
   const kpiChartData = useMemo(
@@ -87,8 +88,13 @@ export default function SummaryStep({ answers, employeeInfo, templateFile, setTe
   };
 
   const handleExportDocx = async () => {
-    if (!templateFile) return;
-    await exportDocx(templateFile, employeeInfo, answers);
+    if (templateFile) {
+      await exportDocx(templateFile, employeeInfo, answers);
+    } else if (templateUrl) {
+      const res = await fetch(`${import.meta.env.BASE_URL}${templateUrl}`);
+      const buf = await res.arrayBuffer();
+      await exportDocx(buf, employeeInfo, answers);
+    }
   };
 
   return (
@@ -233,7 +239,48 @@ export default function SummaryStep({ answers, employeeInfo, templateFile, setTe
           <div className="border border-gray-200 rounded-lg p-4">
             <p className="font-medium text-gray-700 mb-1">Export as DOCX</p>
             <p className="text-xs text-gray-500 mb-3">Fill the Performance Evaluation template with your scores</p>
-            {!templateFile ? (
+            {templateFile ? (
+              <div>
+                <p className="text-xs text-green-600 mb-2">Template loaded: {templateFile.name}</p>
+                <button
+                  onClick={handleExportDocx}
+                  className="w-full bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                >
+                  Generate & Download DOCX
+                </button>
+              </div>
+            ) : templateUrl ? (
+              <div>
+                <p className="text-xs text-green-600 mb-2">Template auto-loaded from rubric set</p>
+                <button
+                  onClick={handleExportDocx}
+                  className="w-full bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors mb-2"
+                >
+                  Generate & Download DOCX
+                </button>
+                <div className="flex gap-2">
+                  <a
+                    href={`${import.meta.env.BASE_URL}${templateUrl}`}
+                    download
+                    className="flex-1 text-center text-xs text-blue-600 hover:text-blue-800 py-1"
+                  >
+                    Download Blank Template
+                  </a>
+                  <label className="flex-1 text-center text-xs text-gray-500 hover:text-gray-700 py-1 cursor-pointer">
+                    Upload Custom Template
+                    <input
+                      type="file"
+                      accept=".docx"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) setTemplateFile(f);
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+            ) : (
               <label className="block w-full text-center bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors cursor-pointer">
                 Upload Template (.docx)
                 <input
@@ -246,16 +293,6 @@ export default function SummaryStep({ answers, employeeInfo, templateFile, setTe
                   }}
                 />
               </label>
-            ) : (
-              <div>
-                <p className="text-xs text-green-600 mb-2">Template loaded: {templateFile.name}</p>
-                <button
-                  onClick={handleExportDocx}
-                  className="w-full bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
-                >
-                  Generate & Download DOCX
-                </button>
-              </div>
             )}
           </div>
         </div>

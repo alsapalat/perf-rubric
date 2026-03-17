@@ -1,0 +1,20 @@
+{
+  "multisys": {
+    "label": "Multisys",
+    "rubrics": [
+      { "name": "Backend Head", "file": "rubrics/multisys/Backend Head - RUBRIK.csv" },
+      { "name": "Creative Design Head", "file": "rubrics/multisys/Creative Design Head - RUBRIK.csv" },
+      { "name": "Frontend Head", "file": "rubrics/multisys/Frontend Head - RUBRIK.csv" },
+      { "name": "Gamedev Head", "file": "rubrics/multisys/Gamedev Head - RUBRIK.csv" },
+      { "name": "Hardware Head", "file": "rubrics/multisys/Hardware Head - RUBRIK.csv" },
+      { "name": "Mobile Head", "file": "rubrics/multisys/Mobile Head - RUBRIK.csv" },
+      { "name": "QA Supervisor", "file": "rubrics/multisys/QA Supervisor - RUBRIK.csv" }
+    ],
+    "template": "templates/multisys/template.docx",
+    "autofill": {
+      "group": "Technology Group",
+      "department": "Research and Development",
+      "pefPeriod": "July ~ December 2025"
+    }
+  }
+}

@@ -379,7 +379,7 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
             }}
             className="flex-1 py-3.5 text-sm font-medium text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-colors border-r border-gray-200 flex items-center justify-center gap-1"
           >
-            <span className="text-lg leading-none">\u2190</span>
+            <span className="text-lg leading-none">{'\u2190'}</span>
             {isFirst ? 'Back' : 'Prev'}
           </button>
 
@@ -389,7 +389,7 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
               className="flex-1 py-3.5 text-sm font-bold text-white bg-green-600 hover:bg-green-700 active:bg-green-800 transition-colors flex items-center justify-center gap-1"
             >
               View Summary
-              <span className="text-lg leading-none">\u2192</span>
+              <span className="text-lg leading-none">{'\u2192'}</span>
             </button>
           ) : (
             <button
@@ -397,7 +397,7 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
               className="flex-1 py-3.5 text-sm font-medium text-blue-700 hover:bg-blue-50 active:bg-blue-100 transition-colors flex items-center justify-center gap-1"
             >
               Next
-              <span className="text-lg leading-none">\u2192</span>
+              <span className="text-lg leading-none">{'\u2192'}</span>
             </button>
           )}
         </div>
@@ -405,7 +405,7 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
 
       {/* Keyboard hint */}
       <p className="text-center text-[10px] text-gray-300 mt-3">
-        Use arrow keys \u2190 \u2192 to navigate
+        Use arrow keys {'\u2190'} {'\u2192'} to navigate
       </p>
     </div>
   );
