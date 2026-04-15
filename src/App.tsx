@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
 import { RubricItem, Answer, EmployeeInfo, AppStep, CodeConfig } from './types';
-import { parseRubricCSV } from './csvParser';
 import ImportStep from './components/ImportStep';
 import InfoStep from './components/InfoStep';
 import EvaluateStep from './components/EvaluateStep';
@@ -48,13 +47,14 @@ export default function App() {
       .catch(() => {});
   }, []);
 
-  const handleImport = useCallback((csvText: string, fileName: string) => {
-    const items = parseRubricCSV(csvText);
+  // ImportStep now passes parsed & validated RubricItem[] directly
+  const handleImport = useCallback((items: RubricItem[], fileName: string) => {
     setRubric(items);
     setRubricFileName(fileName);
     setAnswers(
       items.map((item) => ({
         category: item.category,
+        categoryWeights: item.categoryWeights,
         rating: item.rating,
         priority: item.priority,
         score: 2.5,

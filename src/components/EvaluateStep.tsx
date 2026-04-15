@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { RubricItem, Answer, CATEGORY_FULL_NAMES } from '../types';
+import { RubricItem, Answer, CATEGORY_FULL_NAMES, KPI_CATEGORIES, COMPETENCY_CATEGORIES } from '../types';
 
 interface Props {
   rubric: RubricItem[];
@@ -41,7 +41,6 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
   const jumpRef = useRef<HTMLDivElement>(null);
   const total = rubric.length;
 
-  // Keyboard navigation
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -57,7 +56,6 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
     return () => window.removeEventListener('keydown', handler);
   });
 
-  // Close jump-to on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (jumpRef.current && !jumpRef.current.contains(e.target as Node)) {
@@ -68,7 +66,6 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
     return () => document.removeEventListener('mousedown', handler);
   }, [showJumpTo]);
 
-  // Reset remarks visibility when navigating
   useEffect(() => {
     setShowRemarks(answers[currentIdx]?.remarks?.length > 0);
   }, [currentIdx]);
@@ -76,7 +73,6 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
   const item = rubric[currentIdx];
   const answer = answers[currentIdx];
 
-  // Category grouping for jump-to
   const categoryMap = useMemo(() => {
     const map: { cat: string; startIdx: number; count: number }[] = [];
     let lastCat = '';
@@ -144,12 +140,12 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
   const activeLevel = Math.round(answer.score);
   const isFirst = currentIdx === 0;
   const isLast = currentIdx === total - 1;
+  const hasMultipleWeights = item.categoryWeights.length > 1;
 
   return (
     <div className="max-w-3xl mx-auto">
       {/* Top bar: progress + jump-to */}
       <div className="mb-4">
-        {/* Segmented progress showing categories */}
         <div className="flex items-center gap-0.5 mb-2">
           {categoryMap.map((c) => {
             const catAnswers = answers.slice(c.startIdx, c.startIdx + c.count);
@@ -176,7 +172,6 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
           })}
         </div>
 
-        {/* Current position + jump-to trigger */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500">
@@ -197,7 +192,6 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
               <span className="text-[10px]">{showJumpTo ? '\u25B2' : '\u25BC'}</span>
             </button>
 
-            {/* Jump-to dropdown */}
             {showJumpTo && (
               <div className="absolute right-0 top-6 z-50 bg-white border border-gray-200 rounded-xl shadow-lg w-72 max-h-[60vh] overflow-y-auto">
                 {categoryMap.map((c) => (
@@ -250,7 +244,7 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
         </div>
       </div>
 
-      {/* Main Card — one item at a time */}
+      {/* Main Card */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         {/* Card header */}
         <div className="px-5 pt-5 pb-3 border-b border-gray-100">
@@ -260,12 +254,38 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
               {item.priority}
             </span>
           </div>
-          <p className="text-xs text-gray-400">
-            {CATEGORY_FULL_NAMES[item.category] || item.category}
-          </p>
+
+          {/* Question text (v4) */}
+          {item.question && (
+            <p className="text-sm text-gray-600 mt-1 italic leading-relaxed">{item.question}</p>
+          )}
+
+          {/* Category weights display */}
+          <div className="flex items-center gap-2 mt-2">
+            {item.categoryWeights.map((cw, i) => (
+              <span
+                key={i}
+                className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                  KPI_CATEGORIES.includes(cw.category)
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                    : COMPETENCY_CATEGORIES.includes(cw.category)
+                    ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                    : 'bg-gray-50 text-gray-600 border border-gray-200'
+                }`}
+                title={CATEGORY_FULL_NAMES[cw.category] || cw.category}
+              >
+                {cw.category} {cw.weight}%
+              </span>
+            ))}
+            {!hasMultipleWeights && (
+              <span className="text-[10px] text-gray-400">
+                {CATEGORY_FULL_NAMES[item.category] || item.category}
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Level description cards — clickable to set score */}
+        {/* Level description cards */}
         <div className="px-5 pt-4 pb-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {descriptions.map((d) => {
@@ -292,7 +312,6 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
         {/* Slider + score */}
         <div className="px-5 py-4">
           <div className="flex items-center gap-4">
-            {/* Score display */}
             <div className="text-center flex-shrink-0">
               <div
                 className="text-3xl font-bold tabular-nums"
@@ -308,7 +327,6 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
               </div>
             </div>
 
-            {/* Slider */}
             <div className="flex-1">
               <input
                 type="range"
@@ -330,7 +348,6 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
               </div>
             </div>
 
-            {/* Numeric input */}
             <input
               type="number"
               min="1"
@@ -346,7 +363,7 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
           </div>
         </div>
 
-        {/* Remarks (toggle to reduce clutter) */}
+        {/* Remarks */}
         <div className="px-5 pb-4">
           {!showRemarks ? (
             <button
@@ -367,7 +384,7 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
           )}
         </div>
 
-        {/* Bottom nav — large touch targets */}
+        {/* Bottom nav */}
         <div className="flex border-t border-gray-200">
           <button
             onClick={() => {
@@ -403,7 +420,6 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
         </div>
       </div>
 
-      {/* Keyboard hint */}
       <p className="text-center text-[10px] text-gray-300 mt-3">
         Use arrow keys {'\u2190'} {'\u2192'} to navigate
       </p>

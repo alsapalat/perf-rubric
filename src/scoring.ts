@@ -4,33 +4,68 @@ import {
   PRIORITY_WEIGHTS,
   KPI_CATEGORIES,
   COMPETENCY_CATEGORIES,
+  ALL_CATEGORIES,
   KPI_LEVELS,
   COMPETENCY_LEVELS,
   OVERALL_LEVELS,
 } from './types';
 
+/**
+ * v4 scoring: each answer distributes its score across multiple categories
+ * based on categoryWeights (e.g. FDR 60% / CDQ 40%).
+ * Within each category, items are priority-weighted (High=3, Medium=2, Low=1).
+ */
 export function computeCategoryScores(answers: Answer[]): CategoryScore[] {
-  const grouped: Record<string, Answer[]> = {};
-  for (const a of answers) {
-    if (!grouped[a.category]) grouped[a.category] = [];
-    grouped[a.category].push(a);
+  const contributions: Record<string, { rating: string; priority: string; score: number; weight: number; categoryPct: number }[]> = {};
+
+  for (const cat of ALL_CATEGORIES) {
+    contributions[cat] = [];
   }
 
-  return Object.entries(grouped).map(([category, items]) => {
-    let totalWeighted = 0;
-    let totalWeight = 0;
-    const itemDetails = items.map((item) => {
-      const w = PRIORITY_WEIGHTS[item.priority] || 2;
-      totalWeighted += item.score * w;
-      totalWeight += w;
-      return { rating: item.rating, priority: item.priority, score: item.score, weight: w };
+  for (const a of answers) {
+    const priorityWeight = PRIORITY_WEIGHTS[a.priority] || 2;
+
+    if (a.categoryWeights && a.categoryWeights.length > 0) {
+      for (const cw of a.categoryWeights) {
+        if (!contributions[cw.category]) contributions[cw.category] = [];
+        contributions[cw.category].push({
+          rating: a.rating,
+          priority: a.priority,
+          score: a.score,
+          weight: priorityWeight,
+          categoryPct: cw.weight / 100,
+        });
+      }
+    } else {
+      if (!contributions[a.category]) contributions[a.category] = [];
+      contributions[a.category].push({
+        rating: a.rating,
+        priority: a.priority,
+        score: a.score,
+        weight: priorityWeight,
+        categoryPct: 1,
+      });
+    }
+  }
+
+  return Object.entries(contributions)
+    .filter(([, items]) => items.length > 0)
+    .map(([category, items]) => {
+      let totalWeighted = 0;
+      let totalWeight = 0;
+
+      for (const item of items) {
+        const effectiveWeight = item.weight * item.categoryPct;
+        totalWeighted += item.score * effectiveWeight;
+        totalWeight += effectiveWeight;
+      }
+
+      return {
+        category,
+        score: totalWeight > 0 ? totalWeighted / totalWeight : 0,
+        items,
+      };
     });
-    return {
-      category,
-      score: totalWeight > 0 ? totalWeighted / totalWeight : 0,
-      items: itemDetails,
-    };
-  });
 }
 
 export function computeKPIAverage(catScores: CategoryScore[]): number {

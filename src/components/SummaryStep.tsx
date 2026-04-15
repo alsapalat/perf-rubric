@@ -194,6 +194,7 @@ export default function SummaryStep({ answers, employeeInfo, templateFile, setTe
                 <th className="text-left py-2 px-3 text-gray-500 font-medium">Category</th>
                 <th className="text-left py-2 px-3 text-gray-500 font-medium">Name</th>
                 <th className="text-center py-2 px-3 text-gray-500 font-medium">Type</th>
+                <th className="text-center py-2 px-3 text-gray-500 font-medium">Contributors</th>
                 <th className="text-center py-2 px-3 text-gray-500 font-medium">Score</th>
               </tr>
             </thead>
@@ -208,6 +209,15 @@ export default function SummaryStep({ answers, employeeInfo, templateFile, setTe
                     }`}>
                       {KPI_CATEGORIES.includes(cs.category) ? 'KPI' : 'Competency'}
                     </span>
+                  </td>
+                  <td className="py-2 px-3 text-center">
+                    <div className="flex flex-wrap gap-0.5 justify-center">
+                      {cs.items.map((it, i) => (
+                        <span key={i} className="text-[9px] px-1 py-0.5 rounded bg-gray-100 text-gray-500" title={`${it.rating}: ${it.score.toFixed(1)} @ ${Math.round(it.categoryPct * 100)}%`}>
+                          {Math.round(it.categoryPct * 100)}%
+                        </span>
+                      ))}
+                    </div>
                   </td>
                   <td className="py-2 px-3 text-center font-bold" style={{ color: getBarColor(cs.score) }}>
                     {cs.score.toFixed(2)}

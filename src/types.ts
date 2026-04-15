@@ -1,6 +1,13 @@
-export interface RubricItem {
+export interface CategoryWeight {
   category: string;
-  rating: string;
+  weight: number; // percentage, e.g. 60 means 60%
+}
+
+export interface RubricItem {
+  category: string; // primary category (first in weights list)
+  categoryWeights: CategoryWeight[]; // v4: distributed weights across categories
+  rating: string; // rubric item name
+  question?: string; // v4: question text
   priority: 'High' | 'Medium' | 'Low';
   descriptions: {
     lagging: string;
@@ -11,7 +18,8 @@ export interface RubricItem {
 }
 
 export interface Answer {
-  category: string;
+  category: string; // primary category
+  categoryWeights: CategoryWeight[];
   rating: string;
   priority: string;
   score: number;
@@ -32,7 +40,7 @@ export interface EmployeeInfo {
 export interface CategoryScore {
   category: string;
   score: number;
-  items: { rating: string; priority: string; score: number; weight: number }[];
+  items: { rating: string; priority: string; score: number; weight: number; categoryPct: number }[];
 }
 
 export type AppStep = 'import' | 'info' | 'evaluate' | 'summary';
@@ -49,8 +57,27 @@ export interface CodeConfig {
   autofill?: Partial<EmployeeInfo>;
 }
 
+// Validation types for import preview
+export interface ItemValidation {
+  rowIndex: number;
+  item: RubricItem;
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface RubricValidation {
+  items: ItemValidation[];
+  validCount: number;
+  invalidCount: number;
+  warningCount: number;
+  isValid: boolean;
+  formatVersion: 'v4' | 'legacy';
+}
+
 export const KPI_CATEGORIES = ['FDR', 'RO', 'SS', 'IRR', 'DCT', 'CDQ', 'TDA', 'TSD', 'TER', 'KSI'];
 export const COMPETENCY_CATEGORIES = ['PD', 'RDM', 'CSF', 'CD', 'LX', 'IO', 'CPS'];
+export const ALL_CATEGORIES = [...KPI_CATEGORIES, ...COMPETENCY_CATEGORIES];
 
 export const PRIORITY_WEIGHTS: Record<string, number> = {
   High: 3,
@@ -82,17 +109,17 @@ export const OVERALL_LEVELS = [
 ];
 
 export const CATEGORY_FULL_NAMES: Record<string, string> = {
-  FDR: 'Feature Delivery Rate',
+  FDR: 'Flow, Delivery & Rhythm',
   RO: 'Resource Optimization',
-  SS: 'Stakeholder Satisfaction',
-  IRR: 'Incident Response & Resolution',
-  DCT: 'Dev Cycle Time',
-  CDQ: 'Code/Design Quality',
-  TDA: 'Tech Debt Awareness',
-  TSD: 'Team Skill Development',
+  SS: 'Stakeholder/Strategic Alignment',
+  IRR: 'Incident Response & Reliability',
+  DCT: 'Delivery Cycle Throughput',
+  CDQ: 'Craft & Design Quality',
+  TDA: 'Test Debt Awareness',
+  TSD: 'Team Skills Development',
   TER: 'Team Engagement & Retention',
   KSI: 'Knowledge Sharing & Innovation',
-  PD: 'Purpose-Driven',
+  PD: 'Product Direction',
   RDM: 'Risk & Decision Making',
   CSF: 'Communication & Stakeholder Feedback',
   CD: 'Continuous Development',
