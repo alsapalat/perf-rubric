@@ -2,6 +2,11 @@
   "multisys": {
     "label": "Multisys",
     "rubrics": [
+      { "name": "Backend Head", "file": "rubrics/multisys/Backend Head - RUBRIK v4.csv" },
+      { "name": "Creative Design Head", "file": "rubrics/multisys/Creative Design Head - RUBRIK v4.csv" },
+      { "name": "Frontend Head", "file": "rubrics/multisys/Frontend Head - RUBRIK v4.csv" },
+      { "name": "Mobile Head", "file": "rubrics/multisys/Mobile Head - RUBRIK v4.csv" },
+      { "name": "Hardware Head", "file": "rubrics/multisys/Hardware Head - RUBRIK v4.csv" },
       { "name": "QA Supervisor", "file": "rubrics/multisys/QA Supervisor - RUBRIK v4.csv" }
     ],
     "template": "templates/multisys/template.docx",
