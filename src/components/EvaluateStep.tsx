@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { RubricItem, Answer, CATEGORY_FULL_NAMES, KPI_CATEGORIES, COMPETENCY_CATEGORIES } from '../types';
+import { parseAnswersCSV, applyImport } from '../csvParser';
 
 interface Props {
   rubric: RubricItem[];
@@ -39,6 +40,16 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
   const [showJumpTo, setShowJumpTo] = useState(false);
   const [showRemarks, setShowRemarks] = useState(false);
   const jumpRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importToast, setImportToast] = useState<{
+    kind: 'success' | 'error';
+    matched?: number;
+    total?: number;
+    unmatched?: string[];
+    ambiguous?: string[];
+    errors?: string[];
+  } | null>(null);
+  const [showUnmatched, setShowUnmatched] = useState(false);
   const total = rubric.length;
 
   useEffect(() => {
@@ -128,6 +139,52 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
     if (currentIdx > 0) setCurrentIdx((i) => i - 1);
   }, [currentIdx]);
 
+  const onPickFile = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const f = e.target.files?.[0];
+      e.target.value = '';
+      if (!f) return;
+
+      const hasWork = answers.some((a) => a.score !== 2.5 || a.remarks.length > 0);
+      if (hasWork) {
+        const ok = window.confirm(
+          'Importing will overwrite scores and remarks for any matching items. Continue?'
+        );
+        if (!ok) return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = String(reader.result || '');
+        const { rows, errors } = parseAnswersCSV(text);
+        if (errors.length && rows.length === 0) {
+          setImportToast({ kind: 'error', errors });
+          return;
+        }
+        if (rows.length === 0) {
+          setImportToast({ kind: 'error', errors: ['No rows found in CSV.'] });
+          return;
+        }
+        const result = applyImport(rubric, answers, rows);
+        setAnswers(result.next);
+        setImportToast({
+          kind: 'success',
+          matched: result.matched,
+          total: rows.length,
+          unmatched: result.unmatched,
+          ambiguous: result.ambiguous,
+          errors: errors.length ? errors : undefined,
+        });
+        setShowUnmatched(false);
+      };
+      reader.onerror = () => {
+        setImportToast({ kind: 'error', errors: ['Failed to read file.'] });
+      };
+      reader.readAsText(f);
+    },
+    [answers, rubric, setAnswers]
+  );
+
   if (!item || !answer) return null;
 
   const descriptions = [
@@ -183,6 +240,22 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
             </span>
           </div>
 
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+              title="Import a CSV exported from the Summary step"
+            >
+              Import CSV
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={onPickFile}
+              className="hidden"
+            />
+            <span className="text-xs text-gray-300">|</span>
           <div className="relative" ref={jumpRef}>
             <button
               onClick={() => setShowJumpTo(!showJumpTo)}
@@ -237,11 +310,68 @@ export default function EvaluateStep({ rubric, answers, setAnswers, onComplete, 
               </div>
             )}
           </div>
+          </div>
         </div>
 
         <div className="mt-1 text-xs text-gray-400">
           {progressPercent}% answered &middot; {touchedCount} of {total} items
         </div>
+
+        {importToast && (
+          <div
+            className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
+              importToast.kind === 'success'
+                ? 'bg-green-50 border-green-200 text-green-800'
+                : 'bg-red-50 border-red-200 text-red-800'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                {importToast.kind === 'success' ? (
+                  <span>
+                    Imported <span className="font-semibold">{importToast.matched}</span> of{' '}
+                    {importToast.total} item{importToast.total === 1 ? '' : 's'}.
+                    {importToast.unmatched && importToast.unmatched.length > 0 && (
+                      <>
+                        {' '}
+                        <button
+                          onClick={() => setShowUnmatched((v) => !v)}
+                          className="underline font-medium"
+                        >
+                          {importToast.unmatched.length} unmatched
+                        </button>
+                      </>
+                    )}
+                    {importToast.ambiguous && importToast.ambiguous.length > 0 && (
+                      <span className="ml-2 text-amber-700">
+                        ({importToast.ambiguous.length} ambiguous)
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  <span>
+                    <span className="font-semibold">Import failed.</span>{' '}
+                    {(importToast.errors || []).join(' ')}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setImportToast(null)}
+                className="text-gray-400 hover:text-gray-600 leading-none flex-shrink-0"
+                aria-label="Dismiss"
+              >
+                {'✕'}
+              </button>
+            </div>
+            {showUnmatched && importToast.unmatched && importToast.unmatched.length > 0 && (
+              <ul className="mt-2 pl-4 list-disc space-y-0.5 max-h-32 overflow-y-auto">
+                {importToast.unmatched.map((r, i) => (
+                  <li key={i} className="text-gray-600">{r}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Main Card */}

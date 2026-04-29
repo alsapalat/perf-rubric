@@ -94,7 +94,7 @@ export function parseRubricCSV(csvText: string): { items: RubricItem[]; format: 
   return { items, format };
 }
 
-function normalizePriority(val: string | undefined): 'High' | 'Medium' | 'Low' {
+export function normalizePriority(val: string | undefined): 'High' | 'Medium' | 'Low' {
   const p = (val || 'Medium').trim();
   if (p === 'High' || p === 'Medium' || p === 'Low') return p;
   return 'Medium';
@@ -189,4 +189,131 @@ export function exportAnswersCSV(answers: Answer[]): string {
     Remarks: a.remarks,
   }));
   return Papa.unparse(rows);
+}
+
+export interface ImportedAnswerRow {
+  rating: string;
+  categoryWeights: CategoryWeight[];
+  priority: 'High' | 'Medium' | 'Low';
+  score: number;
+  remarks: string;
+}
+
+export interface AnswersCSVParseResult {
+  rows: ImportedAnswerRow[];
+  errors: string[];
+}
+
+function findHeader(fields: string[], target: string): string | undefined {
+  const t = target.trim().toLowerCase();
+  return fields.find((f) => f.trim().toLowerCase() === t);
+}
+
+/**
+ * Parses an answers CSV (the format produced by exportAnswersCSV) into typed rows.
+ * Validates required headers and clamps scores to [1, 4] with one-decimal rounding.
+ */
+export function parseAnswersCSV(csvText: string): AnswersCSVParseResult {
+  const errors: string[] = [];
+  const result = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+  const fields = result.meta.fields || [];
+
+  const ratingKey = findHeader(fields, 'Rating');
+  const scoreKey = findHeader(fields, 'Score');
+  const remarksKey = findHeader(fields, 'Remarks');
+  const weightsKey = findHeader(fields, 'Category Weights');
+  const priorityKey = findHeader(fields, 'Priority');
+
+  if (!ratingKey) errors.push('Missing required column: Rating');
+  if (!scoreKey) errors.push('Missing required column: Score');
+  if (errors.length) return { rows: [], errors };
+
+  const rows: ImportedAnswerRow[] = [];
+  const data = result.data as Record<string, string>[];
+  data.forEach((row, idx) => {
+    const rating = (row[ratingKey!] || '').trim();
+    if (!rating) return;
+
+    const rawScore = (row[scoreKey!] || '').toString().replace(',', '.').trim();
+    const parsed = parseFloat(rawScore);
+    if (isNaN(parsed)) {
+      errors.push(`Row ${idx + 1} ("${rating}"): invalid score "${rawScore}"`);
+      return;
+    }
+    const score = Math.round(Math.max(1, Math.min(4, parsed)) * 10) / 10;
+
+    const remarks = remarksKey ? (row[remarksKey] || '').toString() : '';
+    const categoryWeights = weightsKey ? parseCategoryWeights(row[weightsKey] || '') : [];
+    const priority = normalizePriority(priorityKey ? row[priorityKey] : undefined);
+
+    rows.push({ rating, categoryWeights, priority, score, remarks });
+  });
+
+  return { rows, errors };
+}
+
+export interface ApplyImportResult {
+  next: Answer[];
+  matched: number;
+  unmatched: string[];
+  ambiguous: string[];
+}
+
+/**
+ * Merges imported rows into an existing answers array.
+ * Matching key is `rating` (case-insensitive, trimmed). Duplicate ratings within the rubric
+ * are disambiguated by primary category from the imported row's Category Weights.
+ * Only `score` and `remarks` are overwritten; rubric-derived fields are preserved.
+ */
+export function applyImport(
+  rubric: RubricItem[],
+  current: Answer[],
+  imported: ImportedAnswerRow[]
+): ApplyImportResult {
+  const norm = (s: string) => s.trim().toLowerCase();
+
+  const byRating = new Map<string, number[]>();
+  rubric.forEach((item, i) => {
+    const key = norm(item.rating);
+    const list = byRating.get(key);
+    if (list) list.push(i);
+    else byRating.set(key, [i]);
+  });
+
+  const next = current.map((a) => ({ ...a }));
+  const usedIndices = new Set<number>();
+  const unmatched: string[] = [];
+  const ambiguous: string[] = [];
+  let matched = 0;
+
+  for (const row of imported) {
+    const candidates = byRating.get(norm(row.rating));
+    if (!candidates || candidates.length === 0) {
+      unmatched.push(row.rating);
+      continue;
+    }
+
+    let chosen: number | undefined;
+    if (candidates.length === 1) {
+      chosen = candidates[0];
+    } else {
+      const importedPrimary = row.categoryWeights[0]?.category?.toUpperCase();
+      const byCategory = candidates.filter(
+        (i) => !usedIndices.has(i) && rubric[i].categoryWeights[0]?.category?.toUpperCase() === importedPrimary
+      );
+      if (byCategory.length === 1) {
+        chosen = byCategory[0];
+      } else {
+        const firstUnused = candidates.find((i) => !usedIndices.has(i));
+        chosen = firstUnused ?? candidates[0];
+        ambiguous.push(row.rating);
+      }
+    }
+
+    usedIndices.add(chosen);
+    next[chosen] = { ...next[chosen], score: row.score, remarks: row.remarks };
+    matched++;
+  }
+
+  return { next, matched, unmatched, ambiguous };
 }
